@@ -1,0 +1,86 @@
+/**
+ * 全局样式入口
+ * 加载 Tailwind 层并定义页面基础样式与背景纹理
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    color-scheme: light;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background: #f5f7f6;
+    overflow: hidden;
+}
+
+button,
+textarea {
+    font: inherit;
+}
+
+::selection {
+    background: rgba(47, 107, 79, 0.2);
+}
+
+.grain {
+    opacity: 0.42;
+    background-image: linear-gradient(120deg, rgba(31, 122, 91, 0.04), transparent 36%);
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent 78%);
+}
+
+.focus-ring:focus-visible {
+    outline: 3px solid rgba(31, 122, 91, 0.28);
+    outline-offset: 3px;
+}
+
+.app-shell {
+    background: linear-gradient(135deg, #f5f7f6 0%, #f7faf8 52%, #edf4f0 100%);
+}
+
+.sidebar-shell {
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: 12px 0 36px rgba(23, 33, 31, 0.04);
+}
+
+.glass-panel {
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: 0 20px 60px rgba(23, 33, 31, 0.08);
+    backdrop-filter: blur(18px);
+}
+
+.message-enter {
+    animation: message-enter 240ms ease-out both;
+}
+
+@keyframes message-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
