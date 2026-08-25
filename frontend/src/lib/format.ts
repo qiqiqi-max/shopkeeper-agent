@@ -29,6 +29,13 @@ export function summarizeResult(data: unknown) {
   return `查询完成：${String(data)}`;
 }
 
+export function countResultRows(data: unknown) {
+  if (Array.isArray(data)) return data.length;
+  if (data && typeof data === "object") return 1;
+  if (data === null || data === undefined || data === "") return 0;
+  return 1;
+}
+
 export function toClipboardText(value: unknown) {
   if (typeof value === "string") return value;
   return JSON.stringify(value, null, 2);

@@ -38,3 +38,17 @@ export type ChatMessage = {
   result?: unknown;
   error?: string;
 };
+
+export type RunStatus = "running" | "done" | "error";
+
+export type RunSummary = {
+  id: string;
+  query: string;
+  status: RunStatus;
+  summary: string;
+  createdAt: number;
+  updatedAt: number;
+  rows?: number;
+  activeStep?: string;
+  error?: string;
+};
