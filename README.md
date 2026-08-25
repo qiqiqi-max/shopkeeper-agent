@@ -1,131 +1,97 @@
-<div align='center'>
-  <h1 style="margin-top: 15px;">「电商问数」智能数据分析 Agent</h1>
+<div align="center">
+  <h1 style="margin-top: 15px;">电商问数智能数据分析 Agent</h1>
   <h4><b>shopkeeper-agent</b></h4>
-  <p><em>基于 LangGraph 的电商问数实战项目，配套教程与章节分支，可按完整链路对照学习</em></p>
+  <p><em>面向电商数仓问数场景的智能数据分析工作台，支持自然语言提问、混合检索、LangGraph 流程编排、SQL 生成校验和 SSE 流式返回</em></p>
 </div>
 
-<div align='center'>
+<div align="center">
 
-![AI](https://img.shields.io/badge/AI-Agent-00c853?style=flat)
 ![Python](https://img.shields.io/badge/Python-3.14-3776AB.svg?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571.svg?logo=fastapi&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-Agentic%20Workflow-1C3C3C.svg)
-![Stars](https://img.shields.io/github/stars/qiqiqi-max/shopkeeper-agent?logo=github&style=flat)
-[![Read Online](https://img.shields.io/badge/在线教程-点击访问-blue?logo=bookstack)](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E7%94%B5%E5%95%86%E9%97%AE%E6%95%B0/0-%E5%89%8D%E8%A8%80)
+![React](https://img.shields.io/badge/React-61DAFB.svg?logo=react&logoColor=000)
+![MySQL](https://img.shields.io/badge/MySQL-4479A1.svg?logo=mysql&logoColor=white)
+![Qdrant](https://img.shields.io/badge/Qdrant-FF6F61.svg)
+![Elasticsearch](https://img.shields.io/badge/Elasticsearch-005571.svg?logo=elasticsearch&logoColor=white)
 
 </div>
 
-**📢 说明**：本套实战项目已更新完成，配套教程、章节分支和前后端代码均可对照学习。
+![电商问数工作台空状态，左侧样例与会话控制，中间问答区，右侧运行概览](docs/images/shopkeeper-agent-home.jpg)
 
-如果你正在找一个适合学习 `LangGraph`、`Qdrant`、`MySQL`、`FastAPI` 和 AI Agent 工程开发的实战项目，「电商问数」很可能是最适合你的项目。
+![电商问数查询结果页，展示 LangGraph 执行流程和查询结果表格](docs/images/shopkeeper-agent-query-result.jpg)
 
-它不是只调用一次大模型接口，也不是写几个 Prompt 演示 SQL 生成结果。这个项目围绕电商数仓问数场景，先构建元数据知识库，再做字段、指标、字段取值的混合检索，随后用 LangGraph 编排多阶段问数流程，完成 SQL 生成、校验、修正、执行和前端流式展示。换句话说，你学到的不是某一个框架 API，而是一条 AI 应用从数据准备、检索增强、智能体编排、接口交付到前端联调的完整项目主线。
+## 项目简介
 
-> 本仓库整理自 [ai-agents-from-zero](https://github.com/didilili/ai-agents-from-zero) 教程体系中的 [实战项目-电商问数](https://github.com/didilili/ai-agents-from-zero/tree/main/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E7%94%B5%E5%95%86%E9%97%AE%E6%95%B0)，保留章节分支和图文讲义入口，便于对照学习与二次开发。
+这个项目解决的是一个很具体的问题: 业务同学想问数，但不想自己写 SQL，也不想去记表、字段、指标和口径。
 
-![电商问数前端首页：样例问题、自然语言输入和智能数据分析 Agent 界面](docs/images/shopkeeper-agent-home.jpg)
+现在这版已经把召回、生成、校验、执行和展示串成了一条完整链路:
 
-## 📖 项目介绍
+- 用户输入自然语言问题
+- 系统召回相关字段、指标和字段取值
+- LangGraph 组织多阶段问数流程
+- 生成 SQL、校验 SQL、执行 SQL
+- 结果通过 SSE 流式返回到前端
 
-在真实问数场景里，业务同学通常不会写 SQL，数据分析同学也很难随时记住所有表结构、字段含义、指标口径和字段取值。单纯把自然语言问题直接交给大模型，很容易出现表选错、字段选错、指标理解错和 SQL 幻觉等问题。
+前端也改成了三栏工作台，不再只是单一聊天框:
 
-`电商问数` 要解决的就是这个问题：
+- 左侧是样例问题、新会话和接口状态
+- 中间是对话区、当前问题、执行状态和结果摘要
+- 右侧是运行概览、最近分析记录和一键复用入口
 
-- 用户用自然语言提问
-- 系统自动召回相关字段、指标和字段取值
-- 大模型基于上下文进行分步推理
-- 生成 SQL 并查询数据仓库
-- 以流式方式返回分析结果
+## 现在的前端
 
-## ✨ 项目亮点
+这版界面重点做了三件事:
 
-- **检索 + 推理 + 生成，而不是模型直出 SQL**
-    - 先围绕问题召回相关字段、指标和值域，再组织上下文生成 SQL，整体链路更稳、更可控。
-- **面向企业问数场景的混合检索**
-    - `Qdrant` 负责字段和指标的语义召回。
-    - `Elasticsearch` 负责字段取值的全文检索。
-    - `MySQL` 负责保存完整、权威的结构化元数据。
-- **支持字段、指标、取值三类信息协同召回**
-    - 比单纯做表级或字段级检索更贴近真实企业分析流程。
-- **从检索到执行的完整可运行链路**
-    - 不停留在 Prompt 设计，而是会真实生成 SQL、执行查询，并以流式方式返回结果。
-- **工程化后端结构清晰**
-    - 基于 `FastAPI + LangGraph + Repository + Client Manager` 组织配置、客户端、仓储层、服务层与智能体流程，便于维护和扩展。
-- **不仅有实战代码，还有完整配套教程文档**
-    - 项目配有一套系统化、持续更新、完全免费的教程讲义，适合按章节从数仓基础、元数据知识库到问数智能体流程逐步学习。
-- **兼顾学习价值与可扩展性**
-    - 既可以按教程章节逐步理解，也可以在此基础上继续扩展权限控制、SQL 审核、结果可视化等能力。
+1. 把问数流程收进一个三栏工作台，信息更集中。
+2. 保留流式反馈，让每一步执行状态都看得见。
+3. 用本地最近记录补上会话轨迹，方便反复试问题。
 
-这套课程十分适合这些场景：
+移动端会自动收敛成单栏布局，桌面端保持三栏。
 
-- 想系统学习 `LangGraph`，但不想只停留在几个玩具节点。
-- 想把 `MySQL`、`Qdrant`、`Elasticsearch` 和大模型放到同一个业务场景里理解。
-- 想做一个比简单模型调用更接近实际开发的 AI Agent 项目。
-- 想把项目写进简历，并且能说清楚数据层、检索层、智能体层、服务层和前端层分别做了什么。
+## 核心能力
 
-## 🏗️ 系统架构
+- 混合检索: `Qdrant` 负责字段和指标语义召回，`Elasticsearch` 负责字段取值检索，`MySQL` 保存结构化元数据。
+- 流程编排: `LangGraph` 负责把召回、过滤、生成、校验和执行串起来。
+- 实时返回: 后端通过 `SSE` 推送节点进度、结果和错误信息。
+- 本地可视化: 前端保留最近分析记录、运行状态和结果摘要，适合本地演示和面试讲解。
+- 数据落地: 元数据库和教学数仓都接到本地 MySQL，Navicat 里可以直接看 `meta` 和 `dw` 两个库。
 
-![电商问数系统架构图：前端通过 FastAPI 和 SSE 连接后端，LangGraph 问数智能体基于 Jieba、MySQL、Qdrant、Elasticsearch 和 LLM 完成召回、SQL 生成校验执行与结果返回](docs/images/shopkeeper-agent-system-architecture.svg)
+## 技术栈
 
-项目围绕两条主线展开：
+| 模块 | 技术 | 作用 |
+| --- | --- | --- |
+| 智能体编排 | `LangGraph` | 组织多阶段问数流程 |
+| 后端接口 | `FastAPI` | 提供问数 API 和生命周期管理 |
+| 流式协议 | `SSE` | 推送执行进度和结果 |
+| 元数据存储 | `MySQL` / `SQLAlchemy` | 保存表、字段、指标等结构化信息 |
+| 向量检索 | `Qdrant` | 存储字段和指标向量 |
+| 全文检索 | `Elasticsearch` | 检索字段真实取值 |
+| 前端 | `React` / `Vite` / `Tailwind CSS` | 提供三栏工作台和结果展示 |
+| 依赖管理 | `uv` / `pnpm` | 管理后端和前端依赖 |
 
-| 主线             | 做什么                                                                   | 涉及模块                                     |
-| ---------------- | ------------------------------------------------------------------------ | -------------------------------------------- |
-| 元数据知识库构建 | 抽取教学数仓中的表、字段、指标和字段取值，写入结构化库、向量库和全文索引 | `MySQL` / `Qdrant` / `Elasticsearch` / `TEI` |
-| 自然语言问数     | 基于用户问题完成召回、上下文整理、SQL 生成校验执行，并把过程流式返回前端 | `LangGraph` / `FastAPI` / `SSE` / `React`    |
-
-![电商问数查询结果页：LangGraph 执行流程、SQL 校验执行和查询结果表格](docs/images/shopkeeper-agent-query-result.jpg)
-
-## 🛠️ 项目技术栈
-
-| 模块       | 技术                              | 作用                                           |
-| ---------- | --------------------------------- | ---------------------------------------------- |
-| 教学数仓   | `MySQL`                           | 模拟事实表、维度表和分析型查询环境             |
-| 元数据库   | `MySQL` / `SQLAlchemy`            | 保存表、字段、指标、字段指标关系等结构化元数据 |
-| 向量检索   | `Qdrant`                          | 保存字段和指标向量，支持语义召回               |
-| 全文检索   | `Elasticsearch`                   | 保存字段真实取值，支持关键词和值域检索         |
-| Embedding  | `TEI` / `BAAI/bge-large-zh-v1.5`  | 将字段、指标、问题等文本转成向量               |
-| 智能体编排 | `LangGraph`                       | 组织多阶段问数工作流                           |
-| 模型接入   | `LangChain`                       | 封装 LLM 与 Embedding 调用                     |
-| 后端接口   | `FastAPI`                         | 提供问数 API、依赖注入和生命周期管理           |
-| 流式协议   | `SSE`                             | 实时返回节点进度、查询结果和错误消息           |
-| 前端       | `React` / `Vite` / `Tailwind CSS` | 提供聊天式问数界面和流程展示                   |
-| 日志追踪   | `ContextVar` / `loguru`           | 为并发请求注入 request_id，便于排查链路        |
-| 依赖管理   | `uv` / `pnpm`                     | 管理 Python 后端和前端依赖                     |
-
-## 📁 项目结构
+## 项目结构
 
 ```text
 shopkeeper-agent/
-├── app/
-│   ├── agent/            # LangGraph 图、状态、上下文和各类节点
-│   ├── api/              # FastAPI 路由、依赖注入、生命周期和请求结构
-│   ├── clients/          # MySQL、Qdrant、Elasticsearch、Embedding 客户端管理
-│   ├── conf/             # 配置 dataclass 与配置加载工具
-│   ├── core/             # 日志、request_id 上下文等通用能力
-│   ├── entities/         # 更贴近业务语义的数据对象
-│   ├── models/           # SQLAlchemy ORM 模型
-│   ├── prompt/           # Prompt 加载工具
-│   ├── repositories/     # MySQL、Qdrant、Elasticsearch 数据访问层
-│   ├── scripts/          # 元数据知识库构建脚本
-│   └── services/         # 元数据构建服务和问数查询服务
+├── app/                  # 后端业务代码、智能体、接口、服务和仓储
 ├── conf/                 # app_config.yaml、meta_config.yaml
-├── docker/               # Docker Compose、MySQL 初始化 SQL、ES 插件、Embedding 挂载目录
-├── frontend/             # React + Vite + Tailwind CSS 前端项目
-├── prompts/              # SQL 生成、修正、过滤等 Prompt 模板
+├── docs/                 # 项目截图和架构图
+├── frontend/             # React + Vite + Tailwind CSS 前端
+├── prompts/              # SQL 生成、修正和过滤模板
 ├── main.py               # FastAPI 应用入口
-└── pyproject.toml        # Python 项目依赖与工具配置
+└── pyproject.toml        # Python 依赖和工具配置
 ```
 
-## 🚀 快速开始
+## 本地运行
 
-当前仓库已经包含一套可直接启动的本地开发环境，你可以按照以下顺序启动项目。
+项目依赖本地运行的 MySQL、Qdrant、Elasticsearch 和 Embedding 服务，连接信息在 [conf/app_config.yaml](conf/app_config.yaml) 里。
 
 ### 1. 准备环境
 
 - Python `>= 3.14`
 - `uv`
-- Docker 与 Docker Compose
-- Node.js 与 `pnpm`
+- Node.js
+- `pnpm`
 
 ### 2. 克隆项目
 
@@ -140,94 +106,32 @@ cd shopkeeper-agent
 uv sync
 ```
 
-### 4. 配置大模型 API Key
+### 4. 配置环境变量
 
-```bash
-cp .env.example .env
-```
-
-把 `.env` 中的 `LLM_API_KEY` 替换成真实密钥：
+复制 `.env.example` 为 `.env`，然后设置 LLM 相关信息:
 
 ```bash
 LLM_API_KEY=your_real_api_key
+LLM_BASE_URL=your_llm_base_url
 ```
-
-默认配置使用兼容 OpenAI 接口的硅基流动服务：
-
-```yaml
-llm:
-    model_name: Pro/zai-org/GLM-5.1
-    api_key: ${oc.env:LLM_API_KEY}
-    base_url: https://api.siliconflow.cn/v1
-```
-
-如需使用其他兼容 OpenAI API 的模型平台，修改 [conf/app_config.yaml](conf/app_config.yaml) 中的 `model_name` 和 `base_url`。
 
 ### 5. 准备 Embedding 模型
 
-项目通过 `TEI` 加载 `BAAI/bge-large-zh-v1.5`。模型文件体积较大，无法再仓库中进行提交，需要先下载到 Docker 挂载目录：
+把 `BAAI/bge-large-zh-v1.5` 下载到你本地的 embedding 服务目录，并和 `conf/app_config.yaml` 里的挂载路径保持一致。
 
-```bash
-uv run hf download BAAI/bge-large-zh-v1.5 --local-dir docker/embedding/bge-large-zh-v1.5
-```
-
-如果手动下载，请解压到：`docker/embedding/bge-large-zh-v1.5`路径下。
-
-### 6. 启动 Docker 基础服务
-
-```bash
-docker compose -f docker/docker-compose.yaml up -d
-```
-
-默认端口：
-
-| 服务          | 端口   |
-| ------------- | ------ |
-| MySQL         | `3306` |
-| Elasticsearch | `9200` |
-| Kibana        | `5601` |
-| Qdrant        | `6333` |
-| Embedding     | `8081` |
-
-> `docker/mysql/meta.sql` 和 `docker/mysql/dw.sql` 会在 MySQL 容器首次启动时自动初始化元数据库和教学数仓。
-
-### 7. 构建元数据知识库
+### 6. 构建元数据知识库
 
 ```bash
 uv run python -m app.scripts.build_meta_knowledge -c conf/meta_config.yaml
 ```
 
-这一步会把表字段元数据写入 MySQL，把字段和指标向量写入 Qdrant，并把字段真实取值写入 Elasticsearch。
-
-### 8. 启动后端
+### 7. 启动后端
 
 ```bash
 uv run fastapi dev main.py
 ```
 
-后端接口：
-
-```text
-POST http://127.0.0.1:8000/api/query
-```
-
-请求示例：
-
-```json
-{
-    "query": "统计华北地区的销售总额"
-}
-```
-
-SSE 消息类型：
-
-| 类型       | 含义         |
-| ---------- | ------------ |
-| `progress` | 节点执行进度 |
-| `result`   | 最终查询结果 |
-| `error`    | 全局异常消息 |
-
-### 9. 启动前端
+### 8. 启动前端
 
 ```bash
 cd frontend
@@ -235,17 +139,19 @@ pnpm install
 pnpm dev
 ```
 
-前端默认通过 Vite 代理把 `/api` 转发到 `http://127.0.0.1:8000`。如需修改：
+默认前端会通过 `/api` 代理到后端接口。需要手动改地址时，调整 `frontend/.env` 里的 `VITE_DEV_PROXY_TARGET` 或 `VITE_API_BASE_URL`。
 
-```bash
-cd frontend
-cp .env.example .env
-```
+## 数据库说明
 
-```bash
-VITE_DEV_PROXY_TARGET=http://127.0.0.1:8000
-```
+当前配置使用本地 MySQL。
+
+- 元数据库: `meta`
+- 教学数仓: `dw`
+- 账号: `shopkeeper-agent`
+- 密码: `123456`
+
+Navicat 里直接连本机 `3306` 就能看到这两个库。
 
 ## 项目现状
 
-当前版本已经打通前后端联调、MySQL 数据层、元数据构建和问数结果展示，可以直接用于本地演示和二次开发。
+当前版本已经打通本地 MySQL、元数据构建、问数链路、前端三栏工作台和结果展示，可以直接用于本地演示和二次开发。
