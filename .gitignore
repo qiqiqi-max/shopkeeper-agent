@@ -52,6 +52,11 @@ npm-debug.log
 yarn-error.log
 testem.log
 /typings
+/logs/
+/backend.log
+/backend.err.log
+/frontend/frontend.log
+/frontend/frontend.err.log
 
 # System
 .DS_Store

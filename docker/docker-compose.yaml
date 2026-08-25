@@ -1,3 +1,5 @@
+﻿name: shopkeeper-agent
+
 services:
   mysql:
     image: mysql:8.0
@@ -5,10 +7,10 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: dili123
-      MYSQL_USER: didilili
+      MYSQL_USER: shopkeeper-agent
       MYSQL_PASSWORD: dili123
     ports:
-      - "3306:3306"
+      - "13306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./mysql:/docker-entrypoint-initdb.d
@@ -22,6 +24,7 @@ services:
     environment:
       discovery.type: single-node
       xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
     ports:
       - "9200:9200"
     volumes:
