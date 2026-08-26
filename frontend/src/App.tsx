@@ -16,9 +16,15 @@ import { Composer } from "./components/Composer";
 import { EmptyState } from "./components/EmptyState";
 import { MessageBubble } from "./components/MessageBubble";
 import { SessionRail } from "./components/SessionRail";
-import { streamQuery } from "./lib/agentApi";
+import { fetchQueryHistory, streamQuery } from "./lib/agentApi";
 import { cn, countResultRows, summarizeResult } from "./lib/format";
-import type { AgentEvent, ChatMessage, RunSummary, StepState } from "./types/agent";
+import type {
+  AgentEvent,
+  ChatMessage,
+  QueryHistoryItem,
+  RunSummary,
+  StepState,
+} from "./types/agent";
 
 const examples = [
   "统计 2025 年第一季度各大区的 GMV，并按 GMV 从高到低排序",
@@ -51,6 +57,22 @@ function loadRecentRuns(): RunSummary[] {
   }
 }
 
+function historyToRun(history: QueryHistoryItem): RunSummary {
+  return {
+    id: history.id,
+    query: history.query,
+    status: history.status,
+    summary: history.summary ?? "",
+    createdAt: new Date(history.created_at).getTime(),
+    updatedAt: new Date(history.updated_at).getTime(),
+    rows: history.row_count,
+    error: history.error ?? undefined,
+    result: history.result,
+    activeStep:
+      history.status === "done" ? "执行完成" : history.status === "error" ? "异常" : "运行中",
+  };
+}
+
 function upsertRun(
   runs: RunSummary[],
   runId: string,
@@ -71,6 +93,7 @@ function upsertRun(
         rows: patch.rows,
         activeStep: patch.activeStep,
         error: patch.error,
+        result: patch.result,
       };
 
   return [nextRun, ...runs.filter((run) => run.id !== runId)].slice(0, MAX_RECENT_RUNS);
@@ -103,6 +126,19 @@ export default function App() {
       // 本地历史只是增强体验，写入失败不影响主流程
     }
   }, [recentRuns]);
+
+  const refreshHistory = async () => {
+    try {
+      const histories = await fetchQueryHistory(MAX_RECENT_RUNS);
+      setRecentRuns(histories.map(historyToRun));
+    } catch {
+      // 后端历史不可用时保留本地记录，不打断当前问数流程
+    }
+  };
+
+  useEffect(() => {
+    void refreshHistory();
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -212,6 +248,7 @@ export default function App() {
           summary: summarizeResult(event.data),
           rows: countResultRows(event.data),
           activeStep: "执行完成",
+          result: event.data,
         });
       }
 
@@ -227,6 +264,7 @@ export default function App() {
 
     try {
       await streamQuery(query, { signal: controller.signal, onEvent });
+      await refreshHistory();
       setMessages((current) =>
         current.map((message) =>
           message.id === assistantId && message.status === "streaming"
@@ -265,6 +303,7 @@ export default function App() {
           activeStep: "异常",
         });
       }
+      await refreshHistory();
     } finally {
       setActiveController(null);
     }
@@ -280,9 +319,26 @@ export default function App() {
     setDraft("");
   };
 
-  const reuseQuery = (query: string) => {
+  const openHistory = (run: RunSummary) => {
     if (isStreaming) return;
-    setDraft(query);
+
+    setMessages([
+      {
+        id: makeId(),
+        role: "user",
+        content: run.query,
+        createdAt: run.createdAt,
+      },
+      {
+        id: makeId(),
+        role: "assistant",
+        content: run.summary || (run.status === "error" ? "这次查询没有成功。" : "历史记录已打开。"),
+        createdAt: run.updatedAt,
+        status: run.status === "error" ? "error" : "done",
+        result: run.result,
+        error: run.error,
+      },
+    ]);
   };
 
   return (
@@ -459,7 +515,7 @@ export default function App() {
           currentStep={activeStep}
           latestRun={activeRun}
           recentRuns={recentRuns}
-          onReuseQuery={reuseQuery}
+          onOpenRun={openHistory}
         />
       </div>
     </div>

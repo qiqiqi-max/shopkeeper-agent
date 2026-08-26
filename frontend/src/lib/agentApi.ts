@@ -2,7 +2,7 @@
  * 智能体接口客户端
  * 封装后端 /api/query SSE 流式接口请求与事件解析逻辑
  */
-import type { AgentEvent } from "../types/agent";
+import type { AgentEvent, QueryHistoryItem } from "../types/agent";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? "";
 
@@ -55,6 +55,20 @@ export async function streamQuery(query: string, options: QueryOptions) {
   if (tail) {
     options.onEvent(tail);
   }
+}
+
+export async function fetchQueryHistory(limit = 20): Promise<QueryHistoryItem[]> {
+  const response = await fetch(`${API_BASE_URL}/api/query/history?limit=${limit}`, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`历史记录请求失败：HTTP ${response.status}`);
+  }
+
+  return (await response.json()) as QueryHistoryItem[];
 }
 
 function parseSseChunk(chunk: string): AgentEvent | null {

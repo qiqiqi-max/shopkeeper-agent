@@ -5,7 +5,15 @@
 
 # Shopkeeper Agent Frontend
 
-匹配后端 `shopkeeper-agent` 的问数聊天前端，技术栈为 React + Vite + Tailwind CSS + pnpm。
+匹配后端 `shopkeeper-agent` 的电商问数工作台，技术栈为 React + Vite + Tailwind CSS + pnpm。
+
+当前前端包含：
+
+- 三栏工作台布局
+- SSE 流式执行状态
+- MySQL 查询历史展示
+- 历史结果恢复
+- 结果表格和轻量柱状图
 
 ## 启动
 

@@ -21,7 +21,7 @@ const stepOrder = [
   "执行SQL",
 ];
 
-type FlowStatus = ProgressStatus | "pending";
+type FlowStatus = ProgressStatus | "pending" | "skipped";
 
 function getStatusMap(steps: StepState[]) {
   return steps.reduce<Record<string, StepState>>((map, item) => {
@@ -30,7 +30,15 @@ function getStatusMap(steps: StepState[]) {
   }, {});
 }
 
-function statusFor(step: string, map: Record<string, StepState>): FlowStatus {
+function statusFor(
+  step: string,
+  map: Record<string, StepState>,
+  flowFinished: boolean,
+): FlowStatus {
+  if (flowFinished && step === "校正SQL" && !map[step]) {
+    return "skipped";
+  }
+
   return map[step]?.status ?? "pending";
 }
 
@@ -51,7 +59,11 @@ export function StepRail({ steps = [] }: { steps?: StepState[] }) {
   if (steps.length === 0) return null;
 
   const statusMap = getStatusMap(steps);
-  const completed = steps.filter((item) => item.status === "success").length;
+  const flowFinished = statusMap["执行SQL"]?.status === "success";
+  const visibleSteps = stepOrder.filter((step) => !(flowFinished && step === "校正SQL"));
+  const completed = visibleSteps.filter(
+    (step) => statusFor(step, statusMap, flowFinished) === "success",
+  ).length;
   const running = steps.find((item) => item.status === "running");
   const latestUpdatedAt = steps.reduce(
     (max, item) => Math.max(max, item.updatedAt),
@@ -64,7 +76,7 @@ export function StepRail({ steps = [] }: { steps?: StepState[] }) {
         <div>
           <div className="text-sm font-semibold text-slate-900">执行轨迹</div>
           <div className="mt-1 text-xs text-slate-500">
-            {completed}/{stepOrder.length} 完成
+            {completed}/{visibleSteps.length} 完成
           </div>
         </div>
         <div className="text-xs text-slate-400">
@@ -73,8 +85,8 @@ export function StepRail({ steps = [] }: { steps?: StepState[] }) {
       </div>
 
       <div className="mt-3 space-y-2">
-        {stepOrder.map((step) => {
-          const status = statusFor(step, statusMap);
+        {visibleSteps.map((step) => {
+          const status = statusFor(step, statusMap, flowFinished);
           return (
             <div
               key={step}
@@ -84,6 +96,7 @@ export function StepRail({ steps = [] }: { steps?: StepState[] }) {
                 status === "running" && "border-brass/35 bg-brass/10 text-slate-900",
                 status === "success" && "border-moss/20 bg-moss/10 text-slate-900",
                 status === "error" && "border-tomato/30 bg-tomato/10 text-tomato",
+                status === "skipped" && "border-slate-200 bg-slate-50 text-slate-400",
               )}
             >
               <span
@@ -93,13 +106,14 @@ export function StepRail({ steps = [] }: { steps?: StepState[] }) {
                   status === "running" && "bg-brass/15 text-brass",
                   status === "success" && "bg-moss/15 text-moss",
                   status === "error" && "bg-tomato/15 text-tomato",
+                  status === "skipped" && "bg-slate-100 text-slate-400",
                 )}
               >
                 <StatusIcon status={status} />
               </span>
               <span className="min-w-0 flex-1 truncate font-medium">{step}</span>
               <span className="shrink-0 text-[11px] uppercase tracking-[0.18em] text-slate-400">
-                {status === "pending" ? "waiting" : status}
+                {status === "pending" ? "waiting" : status === "skipped" ? "skipped" : status}
               </span>
             </div>
           );

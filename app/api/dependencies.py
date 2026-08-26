@@ -22,6 +22,7 @@ from app.clients.qdrant_client_manager import qdrant_client_manager
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
+from app.repositories.mysql.meta.query_history_repository import QueryHistoryRepository
 from app.repositories.qdrant.column_qdrant_repository import ColumnQdrantRepository
 from app.repositories.qdrant.metric_qdrant_repository import MetricQdrantRepository
 from app.services.query_service import QueryService
@@ -41,6 +42,14 @@ async def get_meta_mysql_repository(
     """基于请求级 Session 创建元数据仓储"""
 
     return MetaMySQLRepository(session)
+
+
+async def get_query_history_repository(
+    session: Annotated[AsyncSession, Depends(get_meta_session)],
+) -> QueryHistoryRepository:
+    """基于请求级 Session 创建问数历史仓储"""
+
+    return QueryHistoryRepository(session)
 
 
 async def get_embedding_client() -> HuggingFaceEndpointEmbeddings:
@@ -97,6 +106,9 @@ async def get_query_service(
         MetricQdrantRepository, Depends(get_metric_qdrant_repository)
     ],
     value_es_repository: Annotated[ValueESRepository, Depends(get_value_es_repository)],
+    query_history_repository: Annotated[
+        QueryHistoryRepository, Depends(get_query_history_repository)
+    ],
 ) -> QueryService:
     """组装一次查询所需的业务服务"""
 
@@ -108,4 +120,5 @@ async def get_query_service(
         column_qdrant_repository=column_qdrant_repository,
         metric_qdrant_repository=metric_qdrant_repository,
         value_es_repository=value_es_repository,
+        query_history_repository=query_history_repository,
     )

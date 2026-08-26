@@ -5,11 +5,21 @@
 字段校验和 OpenAPI 文档生成交给 Pydantic 与 FastAPI 完成。
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 class QuerySchema(BaseModel):
     """`/api/query` 请求体，承载用户输入的自然语言问题"""
 
     # 前端请求体中的 query 字段，例如 {"query": "统计华北地区销售额"}
-    query: str
+    query: str = Field(min_length=1, max_length=500)
+
+    @field_validator("query")
+    @classmethod
+    def strip_query(cls, value: str) -> str:
+        """清理用户输入，避免空白字符串进入问数链路"""
+
+        query = value.strip()
+        if not query:
+            raise ValueError("query 不能为空")
+        return query

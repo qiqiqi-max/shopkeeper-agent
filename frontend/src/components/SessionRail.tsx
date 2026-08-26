@@ -15,7 +15,7 @@ type SessionRailProps = {
   currentStep?: string;
   latestRun: RunSummary | null;
   recentRuns: RunSummary[];
-  onReuseQuery: (query: string) => void;
+  onOpenRun: (run: RunSummary) => void;
 };
 
 function StatusDot({ active }: { active: boolean }) {
@@ -48,7 +48,7 @@ export function SessionRail({
   currentStep,
   latestRun,
   recentRuns,
-  onReuseQuery,
+  onOpenRun,
 }: SessionRailProps) {
   return (
     <aside className="hidden min-h-0 border-l border-slate-200/90 bg-slate-50/90 xl:flex xl:flex-col">
@@ -117,7 +117,7 @@ export function SessionRail({
                 <button
                   key={run.id}
                   type="button"
-                  onClick={() => onReuseQuery(run.query)}
+                  onClick={() => onOpenRun(run)}
                   className="w-full border border-slate-200 bg-white/90 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-moss/30 hover:bg-white"
                 >
                   <div className="flex items-start justify-between gap-3">

@@ -51,4 +51,17 @@ export type RunSummary = {
   rows?: number;
   activeStep?: string;
   error?: string;
+  result?: unknown;
+};
+
+export type QueryHistoryItem = {
+  id: string;
+  query: string;
+  status: RunStatus;
+  summary: string | null;
+  result: unknown;
+  row_count: number;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
 };

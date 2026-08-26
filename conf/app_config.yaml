@@ -10,18 +10,18 @@ logging:
     level: INFO
 
 db_meta:
-  host: localhost
-  port: 3306
-  user: shopkeeper-agent
-  password: 123456
-  database: meta
+  host: ${oc.env:DB_META_HOST,localhost}
+  port: ${oc.env:DB_META_PORT,3306}
+  user: ${oc.env:DB_META_USER,shopkeeper-agent}
+  password: ${oc.env:DB_META_PASSWORD,123456}
+  database: ${oc.env:DB_META_DATABASE,meta}
 
 db_dw:
-  host: localhost
-  port: 3306
-  user: shopkeeper-agent
-  password: 123456
-  database: dw
+  host: ${oc.env:DB_DW_HOST,localhost}
+  port: ${oc.env:DB_DW_PORT,3306}
+  user: ${oc.env:DB_DW_USER,shopkeeper-agent}
+  password: ${oc.env:DB_DW_PASSWORD,123456}
+  database: ${oc.env:DB_DW_DATABASE,dw}
 
 qdrant:
   host: 127.0.0.1
@@ -39,6 +39,6 @@ es:
   index_name: data_agent
 
 llm:
-  model_name: deepseek-v4-flash
+  model_name: ${oc.env:LLM_MODEL_NAME,deepseek-v4-flash}
   api_key: ${oc.env:LLM_API_KEY}
   base_url: ${oc.env:LLM_BASE_URL}
