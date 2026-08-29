@@ -31,11 +31,15 @@ class ESClientManager:
         初始化异步 Elasticsearch 客户端
         hosts 之所以是列表，是为了兼容 ES 常见的集群连接方式
         """
-        self.client = AsyncElasticsearch(hosts=[self._get_url()])
+        try:
+            self.client = AsyncElasticsearch(hosts=[self._get_url()])
+        except Exception:
+            self.client = None
 
     async def close(self):
         """关闭客户端连接"""
-        await self.client.close()
+        if self.client is not None:
+            await self.client.close()
 
 
 # 创建一个全局可复用的 ES 客户端管理器对象

@@ -51,12 +51,13 @@
 
 ## 核心能力
 
-- 混合检索: `Qdrant` 负责字段和指标语义召回，`Elasticsearch` 负责字段取值检索，`MySQL` 保存结构化元数据。
+- 混合检索: 在线模式下 `Qdrant` 负责字段和指标语义召回，`Elasticsearch` 负责字段取值检索，`MySQL` 保存结构化元数据。
 - 流程编排: `LangGraph` 负责把召回、过滤、生成、校验和执行串起来。
 - 实时返回: 后端通过 `SSE` 推送节点进度、结果和错误信息。
 - 结果展示: 前端同时提供结果表格和轻量柱状图，便于快速读数。
 - 历史追踪: 查询记录持久化到 MySQL，右侧面板可查看最近分析。
 - 数据落地: 元数据库和教学数仓都接到本地 MySQL，Navicat 里可以直接看 `meta` 和 `dw` 两个库。
+- 演示兜底: 当外部召回或大模型服务不可用时，项目会自动切到本地演示模式，仍然可以跑通查询和结果展示。
 
 ## 技术栈
 
@@ -87,7 +88,7 @@ shopkeeper-agent/
 
 ## 本地运行
 
-项目依赖本地运行的 MySQL、Qdrant、Elasticsearch 和 Embedding 服务，连接信息在 [conf/app_config.yaml](conf/app_config.yaml) 里。
+项目默认会自动使用本地演示模式。只要本地 MySQL 可用，就能先跑通查询、展示和历史记录；如果你想接完整外部链路，再把 Qdrant、Elasticsearch、Embedding 和 LLM 服务补上。
 
 ### 1. 准备环境
 
@@ -109,32 +110,25 @@ cd shopkeeper-agent
 uv sync
 ```
 
-### 4. 配置环境变量
+### 4. 准备本地数据库
 
-复制 `.env.example` 为 `.env`，然后设置 LLM 相关信息:
+先把 [docker/mysql/meta.sql](docker/mysql/meta.sql) 和 [docker/mysql/dw.sql](docker/mysql/dw.sql) 导入本地 MySQL，默认账号是 `shopkeeper-agent` / `123456`。
 
-```bash
-LLM_API_KEY=your_real_api_key
-LLM_BASE_URL=your_llm_base_url
-```
+如果你已经把 Qdrant、Elasticsearch、Embedding 和大模型服务都接好了，可以在 `.env` 里加上 `SHOPKEEPER_DEMO_MODE=false`，让项目优先走完整链路。
 
-### 5. 准备 Embedding 模型
-
-把 `BAAI/bge-large-zh-v1.5` 下载到你本地的 embedding 服务目录，并和 `conf/app_config.yaml` 里的挂载路径保持一致。
-
-### 6. 构建元数据知识库
+### 5. 构建元数据知识库
 
 ```bash
 uv run python -m app.scripts.build_meta_knowledge -c conf/meta_config.yaml
 ```
 
-### 7. 启动后端
+### 6. 启动后端
 
 ```bash
 uv run fastapi dev main.py
 ```
 
-### 8. 启动前端
+### 7. 启动前端
 
 ```bash
 cd frontend
@@ -158,4 +152,4 @@ Navicat 里直接连本机 `3306` 就能看到这两个库。
 
 ## 项目现状
 
-当前版本已经打通本地 MySQL、元数据构建、问数链路、查询历史、前端三栏工作台、图表和结果表格，可以直接用于本地演示和二次开发。
+当前版本已经打通本地 MySQL、元数据构建、问数链路、查询历史、前端三栏工作台、图表和结果表格，可以直接用于本地演示和二次开发。缺少外部检索和模型服务时，也会自动降级到本地演示链路。

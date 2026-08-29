@@ -26,7 +26,10 @@ class EmbeddingClientManager:
 
     def init(self):
         """显式初始化客户端，避免模块导入时立即建立外部连接"""
-        self.client = HuggingFaceEndpointEmbeddings(model=self._get_url())
+        try:
+            self.client = HuggingFaceEndpointEmbeddings(model=self._get_url())
+        except Exception:
+            self.client = None
 
 
 # 模块级单例，供整个项目复用同一套 Embedding 客户端管理器

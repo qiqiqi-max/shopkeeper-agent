@@ -12,6 +12,7 @@ from fastapi import Depends
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.conf.app_config import app_config
 from app.clients.embedding_client_manager import embedding_client_manager
 from app.clients.es_client_manager import es_client_manager
 from app.clients.mysql_client_manager import (
@@ -112,6 +113,15 @@ async def get_query_service(
 ) -> QueryService:
     """组装一次查询所需的业务服务"""
 
+    use_demo_mode = (
+        app_config.demo_mode
+        or embedding_client_manager.client is None
+        or qdrant_client_manager.client is None
+        or es_client_manager.client is None
+        or not app_config.llm.api_key
+        or not app_config.llm.base_url
+    )
+
     # QueryService 只接收已经创建好的依赖对象，本身不关心这些对象来自 MySQL、Qdrant 还是 ES
     return QueryService(
         meta_mysql_repository=meta_mysql_repository,
@@ -121,4 +131,5 @@ async def get_query_service(
         metric_qdrant_repository=metric_qdrant_repository,
         value_es_repository=value_es_repository,
         query_history_repository=query_history_repository,
+        demo_mode=use_demo_mode,
     )

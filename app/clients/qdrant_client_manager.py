@@ -32,11 +32,15 @@ class QdrantClientManager:
         显式初始化 Qdrant 客户端
         这里不在 __init__ 中直接初始化，是为了和项目的生命周期管理保持一致
         """
-        self.client = AsyncQdrantClient(url=self._get_url())
+        try:
+            self.client = AsyncQdrantClient(url=self._get_url())
+        except Exception:
+            self.client = None
 
     async def close(self):
         """关闭 Qdrant 客户端连接"""
-        await self.client.close()
+        if self.client is not None:
+            await self.client.close()
 
 
 # 创建一个全局的管理器对象

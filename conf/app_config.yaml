@@ -1,3 +1,5 @@
+demo_mode: ${oc.env:SHOPKEEPER_DEMO_MODE,true}
+
 logging:
   file:
     enable: true
@@ -40,5 +42,5 @@ es:
 
 llm:
   model_name: ${oc.env:LLM_MODEL_NAME,deepseek-v4-flash}
-  api_key: ${oc.env:LLM_API_KEY}
-  base_url: ${oc.env:LLM_BASE_URL}
+  api_key: ${oc.env:LLM_API_KEY,""}
+  base_url: ${oc.env:LLM_BASE_URL,""}

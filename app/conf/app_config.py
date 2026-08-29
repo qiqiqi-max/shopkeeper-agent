@@ -91,6 +91,7 @@ class LLMConfig:
 class AppConfig:
     """项目级总配置入口"""
 
+    demo_mode: bool
     logging: LoggingConfig
     db_meta: DBConfig
     db_dw: DBConfig

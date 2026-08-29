@@ -48,7 +48,8 @@ class MySQLClientManager:
 
     async def close(self):
         """释放连接池资源"""
-        await self.engine.dispose()
+        if self.engine is not None:
+            await self.engine.dispose()
 
 
 # 一套连元数据库，一套连数仓模拟库

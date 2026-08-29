@@ -17,6 +17,7 @@ from app.clients.mysql_client_manager import (
     meta_mysql_client_manager,
 )
 from app.clients.qdrant_client_manager import qdrant_client_manager
+from app.core.log import logger
 from app.models.query_history import QueryHistoryMySQL
 
 
@@ -26,8 +27,17 @@ async def lifespan(app: FastAPI):
 
     # 启动阶段：先建立各类外部服务客户端，后续依赖函数会从 manager 中取已初始化对象
     qdrant_client_manager.init()
+    if qdrant_client_manager.client is None:
+        logger.warning("Qdrant 不可用，项目将使用本地演示模式补足召回链路")
+
     embedding_client_manager.init()
+    if embedding_client_manager.client is None:
+        logger.warning("Embedding 服务不可用，项目将使用本地演示模式补足召回链路")
+
     es_client_manager.init()
+    if es_client_manager.client is None:
+        logger.warning("Elasticsearch 不可用，项目将使用本地演示模式补足召回链路")
+
     meta_mysql_client_manager.init()
     dw_mysql_client_manager.init()
 

@@ -14,6 +14,7 @@ from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from app.agent.context import DataAgentContext
 from app.agent.graph import graph
 from app.agent.state import DataAgentState
+from app.services.demo_query_service import run_demo_query
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
@@ -35,6 +36,7 @@ class QueryService:
         metric_qdrant_repository: MetricQdrantRepository,
         value_es_repository: ValueESRepository,
         query_history_repository: QueryHistoryRepository,
+        demo_mode: bool = False,
     ):
         # MySQL 仓储分别负责元数据补全和真实数仓环境信息读取
         self.meta_mysql_repository = meta_mysql_repository
@@ -46,12 +48,23 @@ class QueryService:
         self.metric_qdrant_repository = metric_qdrant_repository
         self.value_es_repository = value_es_repository
         self.query_history_repository = query_history_repository
+        self.demo_mode = demo_mode
 
     async def query(self, query: str):
         """执行一次问数工作流，并逐段产出 SSE 消息"""
 
         history_id = str(uuid.uuid4())
         await self.query_history_repository.create(history_id, query)
+
+        if self.demo_mode:
+            async for chunk in run_demo_query(
+                query=query,
+                history_id=history_id,
+                query_history_repository=self.query_history_repository,
+                dw_mysql_repository=self.dw_mysql_repository,
+            ):
+                yield chunk
+            return
 
         # State 只放会被图节点读写和合并的业务数据，外部工具对象不塞进 State
         state = DataAgentState(query=query)
@@ -84,13 +97,39 @@ class QueryService:
 
             if not has_result:
                 message = "流程结束但未返回查询结果"
-                await self.query_history_repository.mark_error(
-                    history_id, message
-                )
-                error = {"type": "error", "message": message}
-                yield f"data: {json.dumps(error, ensure_ascii=False)}\n\n"
+                fallback_notice = {
+                    "type": "progress",
+                    "step": "切换演示模式",
+                    "status": "running",
+                    "message": message,
+                }
+                yield f"data: {json.dumps(fallback_notice, ensure_ascii=False)}\n\n"
+                async for chunk in run_demo_query(
+                    query=query,
+                    history_id=history_id,
+                    query_history_repository=self.query_history_repository,
+                    dw_mysql_repository=self.dw_mysql_repository,
+                ):
+                    yield chunk
         except Exception as e:
-            # 流式接口已经开始返回后不能再改 HTTP 状态码，因此把异常也包装成一条 SSE 消息
-            await self.query_history_repository.mark_error(history_id, str(e))
-            error = {"type": "error", "message": str(e)}
-            yield f"data: {json.dumps(error, ensure_ascii=False, default=str)}\n\n"
+            if self.demo_mode:
+                # 流式接口已经开始返回后不能再改 HTTP 状态码，因此把异常也包装成一条 SSE 消息
+                await self.query_history_repository.mark_error(history_id, str(e))
+                error = {"type": "error", "message": str(e)}
+                yield f"data: {json.dumps(error, ensure_ascii=False, default=str)}\n\n"
+                return
+
+            fallback_notice = {
+                "type": "progress",
+                "step": "切换演示模式",
+                "status": "running",
+                "message": "完整链路不可用，已切换到本地演示模式",
+            }
+            yield f"data: {json.dumps(fallback_notice, ensure_ascii=False, default=str)}\n\n"
+            async for chunk in run_demo_query(
+                query=query,
+                history_id=history_id,
+                query_history_repository=self.query_history_repository,
+                dw_mysql_repository=self.dw_mysql_repository,
+            ):
+                yield chunk
