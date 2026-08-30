@@ -4,9 +4,11 @@
 负责新增、更新和读取 `query_history` 记录。
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
+from decimal import Decimal
+from typing import Any
 
-from sqlalchemy import desc, select
+from sqlalchemy import desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.entities.query_history import QueryHistory
@@ -19,6 +21,24 @@ class QueryHistoryRepository:
 
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    @staticmethod
+    def _json_safe(value: Any) -> Any:
+        """把数据库结果转换为 JSON 列可保存的基础类型。"""
+        if isinstance(value, Decimal):
+            return float(value)
+        if isinstance(value, datetime):
+            return value.isoformat()
+        if isinstance(value, list):
+            return [QueryHistoryRepository._json_safe(item) for item in value]
+        if isinstance(value, tuple):
+            return [QueryHistoryRepository._json_safe(item) for item in value]
+        if isinstance(value, dict):
+            return {
+                str(key): QueryHistoryRepository._json_safe(item)
+                for key, item in value.items()
+            }
+        return value
 
     async def create(self, history_id: str, query: str) -> QueryHistory:
         """创建一条运行中的问数记录"""
@@ -44,11 +64,15 @@ class QueryHistoryRepository:
 
         model.status = "done"
         model.summary = summary
-        model.result = result
+        model.result = self._json_safe(result)
         model.row_count = count_result_rows(result)
         model.error = None
         model.updated_at = datetime.now()
-        await self.session.commit()
+        try:
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
 
     async def mark_error(self, history_id: str, message: str):
         """把问数记录标记为失败"""
@@ -61,7 +85,33 @@ class QueryHistoryRepository:
         model.summary = message
         model.error = message
         model.updated_at = datetime.now()
+        try:
+            await self.session.commit()
+        except Exception:
+            await self.session.rollback()
+            raise
+
+    async def delete(self, history_id: str) -> bool:
+        """删除指定的查询历史记录。"""
+        model = await self.session.get(QueryHistoryMySQL, history_id)
+        if not model:
+            return False
+        await self.session.delete(model)
         await self.session.commit()
+        return True
+
+    async def mark_stale_running(self, max_age_minutes: int = 10) -> int:
+        """将服务重启前遗留的运行记录标记为失败。"""
+        result = await self.session.execute(
+            update(QueryHistoryMySQL)
+            .where(
+                QueryHistoryMySQL.status == "running",
+                QueryHistoryMySQL.updated_at < datetime.now() - timedelta(minutes=max_age_minutes),
+            )
+            .values(status="error", summary="查询已中断，请重新发起。", error="服务重启或连接中断")
+        )
+        await self.session.commit()
+        return result.rowcount or 0
 
     async def list_recent(self, limit: int = 20) -> list[QueryHistory]:
         """按更新时间倒序读取最近问数记录"""

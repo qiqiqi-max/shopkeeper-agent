@@ -12,7 +12,6 @@ from fastapi import Depends
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.conf.app_config import app_config
 from app.clients.embedding_client_manager import embedding_client_manager
 from app.clients.es_client_manager import es_client_manager
 from app.clients.mysql_client_manager import (
@@ -20,6 +19,7 @@ from app.clients.mysql_client_manager import (
     meta_mysql_client_manager,
 )
 from app.clients.qdrant_client_manager import qdrant_client_manager
+from app.conf.app_config import app_config
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
@@ -113,14 +113,8 @@ async def get_query_service(
 ) -> QueryService:
     """组装一次查询所需的业务服务"""
 
-    use_demo_mode = (
-        app_config.demo_mode
-        or embedding_client_manager.client is None
-        or qdrant_client_manager.client is None
-        or es_client_manager.client is None
-        or not app_config.llm.api_key
-        or not app_config.llm.base_url
-    )
+    # 只有显式开启演示模式时才使用 Demo；真实模式下依赖缺失应直接暴露错误。
+    use_demo_mode = app_config.demo_mode
 
     # QueryService 只接收已经创建好的依赖对象，本身不关心这些对象来自 MySQL、Qdrant 还是 ES
     return QueryService(

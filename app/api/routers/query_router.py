@@ -8,7 +8,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from starlette.responses import StreamingResponse
 
 from app.api.dependencies import get_query_history_repository, get_query_service
@@ -61,3 +61,15 @@ async def query_history_handler(
         )
         for history in histories
     ]
+
+
+@query_router.delete("/api/query/history/{history_id}", status_code=204)
+async def delete_query_history_handler(
+    history_id: str,
+    query_history_repository: Annotated[
+        QueryHistoryRepository, Depends(get_query_history_repository)
+    ],
+):
+    """删除一条查询历史记录。"""
+    if not await query_history_repository.delete(history_id):
+        raise HTTPException(status_code=404, detail="查询记录不存在")

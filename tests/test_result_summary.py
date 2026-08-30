@@ -1,3 +1,7 @@
+from datetime import datetime
+from decimal import Decimal
+
+from app.repositories.mysql.meta.query_history_repository import QueryHistoryRepository
 from app.services.result_summary import count_result_rows, summarize_result
 
 
@@ -16,3 +20,10 @@ def test_summarize_empty_result():
 def test_summarize_object_result():
     assert count_result_rows({"total": 100}) == 1
     assert summarize_result({"total": 100}) == "查询完成，已返回结构化结果。"
+
+
+def test_query_history_result_is_json_safe():
+    result = QueryHistoryRepository._json_safe(
+        [{"销量": Decimal("12"), "日期": datetime(2025, 3, 1)}]
+    )
+    assert result == [{"销量": 12.0, "日期": "2025-03-01T00:00:00"}]

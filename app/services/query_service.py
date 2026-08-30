@@ -6,6 +6,7 @@
 并统一包装成 SSE 文本返回给路由层。
 """
 
+import asyncio
 import json
 import uuid
 
@@ -14,13 +15,13 @@ from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from app.agent.context import DataAgentContext
 from app.agent.graph import graph
 from app.agent.state import DataAgentState
-from app.services.demo_query_service import run_demo_query
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
 from app.repositories.mysql.meta.query_history_repository import QueryHistoryRepository
 from app.repositories.qdrant.column_qdrant_repository import ColumnQdrantRepository
 from app.repositories.qdrant.metric_qdrant_repository import MetricQdrantRepository
+from app.services.demo_query_service import run_demo_query
 from app.services.result_summary import summarize_result
 
 
@@ -80,56 +81,27 @@ class QueryService:
         has_result = False
         try:
             # stream_mode="custom" 对应节点内部 writer(...) 写出的进度消息
-            async for chunk in graph.astream(
-                input=state, context=context, stream_mode="custom"
-            ):
-                if chunk.get("type") == "result":
-                    has_result = True
-                    data = chunk.get("data")
-                    summary = summarize_result(data)
-                    await self.query_history_repository.mark_done(
-                        history_id, data, summary
-                    )
+            async with asyncio.timeout(120):
+                stream = graph.astream(input=state, context=context, stream_mode="custom")
+                async for chunk in stream:
+                    if chunk.get("type") == "result":
+                        has_result = True
+                        data = chunk.get("data")
+                        summary = summarize_result(data)
+                        await self.query_history_repository.mark_done(
+                            history_id, data, summary
+                        )
 
-                # SSE 要求每条消息以 data: 开头，并以两个换行符结束
-                # ensure_ascii=False 保留中文进度文案，default=str 兜底处理日期等非 JSON 类型
-                yield f"data: {json.dumps(chunk, ensure_ascii=False, default=str)}\n\n"
+                    # SSE 要求每条消息以 data: 开头，并以两个换行符结束
+                    yield f"data: {json.dumps(chunk, ensure_ascii=False, default=str)}\n\n"
 
             if not has_result:
                 message = "流程结束但未返回查询结果"
-                fallback_notice = {
-                    "type": "progress",
-                    "step": "切换演示模式",
-                    "status": "running",
-                    "message": message,
-                }
-                yield f"data: {json.dumps(fallback_notice, ensure_ascii=False)}\n\n"
-                async for chunk in run_demo_query(
-                    query=query,
-                    history_id=history_id,
-                    query_history_repository=self.query_history_repository,
-                    dw_mysql_repository=self.dw_mysql_repository,
-                ):
-                    yield chunk
+                await self.query_history_repository.mark_error(history_id, message)
+                error = {"type": "error", "message": message}
+                yield f"data: {json.dumps(error, ensure_ascii=False)}\n\n"
         except Exception as e:
-            if self.demo_mode:
-                # 流式接口已经开始返回后不能再改 HTTP 状态码，因此把异常也包装成一条 SSE 消息
-                await self.query_history_repository.mark_error(history_id, str(e))
-                error = {"type": "error", "message": str(e)}
-                yield f"data: {json.dumps(error, ensure_ascii=False, default=str)}\n\n"
-                return
-
-            fallback_notice = {
-                "type": "progress",
-                "step": "切换演示模式",
-                "status": "running",
-                "message": "完整链路不可用，已切换到本地演示模式",
-            }
-            yield f"data: {json.dumps(fallback_notice, ensure_ascii=False, default=str)}\n\n"
-            async for chunk in run_demo_query(
-                query=query,
-                history_id=history_id,
-                query_history_repository=self.query_history_repository,
-                dw_mysql_repository=self.dw_mysql_repository,
-            ):
-                yield chunk
+            # 真实模式下保留原始错误，不自动降级到演示模式。
+            await self.query_history_repository.mark_error(history_id, str(e))
+            error = {"type": "error", "message": str(e)}
+            yield f"data: {json.dumps(error, ensure_ascii=False, default=str)}\n\n"

@@ -12,19 +12,15 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import AsyncIterator
 
-import yaml
-
-from app.conf.app_config import app_config
 from app.core.log import logger
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.query_history_repository import (
     QueryHistoryRepository,
 )
 from app.services.result_summary import summarize_result
-
 
 DEMO_REFERENCE_DATE = date(2025, 3, 31)
 
@@ -423,7 +419,8 @@ async def run_demo_query(
     """执行一条本地演示问数流程，并返回 SSE 文本片段。"""
 
     step = "演示模式"
-    writer = lambda payload: f"data: {json.dumps(payload, ensure_ascii=False, default=str)}\n\n"
+    def writer(payload: dict) -> str:
+        return f"data: {json.dumps(payload, ensure_ascii=False, default=str)}\n\n"
     yield writer({"type": "progress", "step": step, "status": "running"})
 
     try:

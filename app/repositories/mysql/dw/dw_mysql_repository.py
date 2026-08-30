@@ -9,6 +9,8 @@ SQL 生成闭环中的数据库环境读取 SQL 校验和最终查询执行也�
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlglot import exp, parse
+from sqlglot.errors import ParseError
 
 
 class DWMySQLRepository:
@@ -16,6 +18,20 @@ class DWMySQLRepository:
 
     def __init__(self, session: AsyncSession):
         self.session = session
+
+    @staticmethod
+    def _ensure_read_only(sql: str) -> str:
+        """只允许单条 SELECT，避免模型输出修改数据的语句。"""
+        normalized = sql.strip()
+        if not normalized:
+            raise ValueError("只允许执行单条只读 SELECT 查询")
+        try:
+            statements = parse(normalized, read="mysql")
+        except ParseError as exc:
+            raise ValueError("SQL 解析失败") from exc
+        if len(statements) != 1 or not isinstance(statements[0], exp.Select):
+            raise ValueError("只允许执行单条只读 SELECT 查询")
+        return statements[0].sql(dialect="mysql")
 
     async def get_column_types(self, table_name: str) -> dict[str, str]:
         """查询整张表的字段类型，作为 ColumnInfo.type 的真实来源"""
@@ -45,10 +61,10 @@ class DWMySQLRepository:
 
     async def validate(self, sql: str):
         """用 EXPLAIN 让数据库提前解析 SQL，发现语法 表名 字段名等错误"""
-        sql = f"explain {sql}"
+        sql = f"explain {self._ensure_read_only(sql)}"
         await self.session.execute(text(sql))
 
     async def run(self, sql: str) -> list[dict]:
         """执行最终 SQL，并把 SQLAlchemy 行对象转换成前端更易消费的字典列表"""
-        result = await self.session.execute(text(sql))
+        result = await self.session.execute(text(self._ensure_read_only(sql)))
         return [dict(row) for row in result.mappings().fetchall()]

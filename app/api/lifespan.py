@@ -17,8 +17,13 @@ from app.clients.mysql_client_manager import (
     meta_mysql_client_manager,
 )
 from app.clients.qdrant_client_manager import qdrant_client_manager
+from app.conf.app_config import app_config
 from app.core.log import logger
 from app.models.query_history import QueryHistoryMySQL
+from app.repositories.es.value_es_repository import ValueESRepository
+from app.repositories.mysql.meta.query_history_repository import QueryHistoryRepository
+from app.repositories.qdrant.column_qdrant_repository import ColumnQdrantRepository
+from app.repositories.qdrant.metric_qdrant_repository import MetricQdrantRepository
 
 
 @asynccontextmanager
@@ -43,6 +48,43 @@ async def lifespan(app: FastAPI):
 
     async with meta_mysql_client_manager.engine.begin() as connection:
         await connection.run_sync(QueryHistoryMySQL.__table__.create, checkfirst=True)
+
+    async with meta_mysql_client_manager.session_factory() as session:
+        await QueryHistoryRepository(session).mark_stale_running()
+
+    if not app_config.demo_mode:
+        missing: list[str] = []
+        if qdrant_client_manager.client is None:
+            missing.append("Qdrant")
+        else:
+            try:
+                await qdrant_client_manager.client.get_collections()
+                if not await qdrant_client_manager.client.collection_exists(ColumnQdrantRepository.collection_name):
+                    missing.append("Qdrant 字段 collection")
+                if not await qdrant_client_manager.client.collection_exists(MetricQdrantRepository.collection_name):
+                    missing.append("Qdrant 指标 collection")
+            except Exception:
+                missing.append("Qdrant")
+        if es_client_manager.client is None:
+            missing.append("Elasticsearch")
+        else:
+            try:
+                if not await es_client_manager.client.ping():
+                    missing.append("Elasticsearch")
+                elif not await es_client_manager.client.indices.exists(index=ValueESRepository.index_name):
+                    missing.append("Elasticsearch value_index")
+            except Exception:
+                missing.append("Elasticsearch")
+        if embedding_client_manager.client is None:
+            missing.append("Embedding")
+        if not app_config.llm.api_key:
+            missing.append("LLM_API_KEY")
+        if not app_config.llm.base_url:
+            missing.append("LLM_BASE_URL")
+        if not app_config.llm.model_name:
+            missing.append("LLM_MODEL_NAME")
+        if missing:
+            raise RuntimeError("完整模式依赖检查失败：" + "、".join(missing))
 
     # yield 之前是启动逻辑，yield 之后是关闭逻辑；中间阶段由 FastAPI 正常处理请求
     yield
