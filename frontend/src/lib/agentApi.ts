@@ -9,9 +9,18 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? ""
 type QueryOptions = {
   signal?: AbortSignal;
   onEvent: (event: AgentEvent) => void;
+  timeoutMs?: number;
 };
 
 export async function streamQuery(query: string, options: QueryOptions) {
+  const timeout = options.timeoutMs ?? 120_000;
+  const timeoutController = new AbortController();
+  const signal = options.signal
+    ? AbortSignal.any([options.signal, timeoutController.signal])
+    : timeoutController.signal;
+  const timeoutId = window.setTimeout(() => timeoutController.abort(), timeout);
+
+  try {
   const response = await fetch(`${API_BASE_URL}/api/query`, {
     method: "POST",
     headers: {
@@ -19,7 +28,7 @@ export async function streamQuery(query: string, options: QueryOptions) {
       Accept: "text/event-stream",
     },
     body: JSON.stringify({ query }),
-    signal: options.signal,
+    signal,
   });
 
   if (!response.ok) {
@@ -55,7 +64,11 @@ export async function streamQuery(query: string, options: QueryOptions) {
   if (tail) {
     options.onEvent(tail);
   }
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 }
+
 
 export async function fetchQueryHistory(limit = 20): Promise<QueryHistoryItem[]> {
   const response = await fetch(`${API_BASE_URL}/api/query/history?limit=${limit}`, {
@@ -69,6 +82,15 @@ export async function fetchQueryHistory(limit = 20): Promise<QueryHistoryItem[]>
   }
 
   return (await response.json()) as QueryHistoryItem[];
+}
+
+export async function deleteQueryHistory(historyId: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/query/history/${historyId}`, {
+    method: "DELETE",
+  });
+  if (!response.ok) {
+    throw new Error(`删除查询记录失败：HTTP ${response.status}`);
+  }
 }
 
 function parseSseChunk(chunk: string): AgentEvent | null {

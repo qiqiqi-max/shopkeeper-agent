@@ -2,7 +2,7 @@
  * 会话轨迹侧栏
  * 展示当前会话状态、最近分析记录和结果摘要
  */
-import { Activity, Clock3, ListChecks, MessageSquareText } from "lucide-react";
+import { Activity, Clock3, ListChecks, MessageSquareText, Trash2 } from "lucide-react";
 import { cn, formatTime } from "../lib/format";
 import type { RunSummary } from "../types/agent";
 
@@ -16,6 +16,7 @@ type SessionRailProps = {
   latestRun: RunSummary | null;
   recentRuns: RunSummary[];
   onOpenRun: (run: RunSummary) => void;
+  onDeleteRun: (run: RunSummary) => void;
 };
 
 function StatusDot({ active }: { active: boolean }) {
@@ -49,6 +50,7 @@ export function SessionRail({
   latestRun,
   recentRuns,
   onOpenRun,
+  onDeleteRun,
 }: SessionRailProps) {
   return (
     <aside className="hidden min-h-0 border-l border-slate-200/90 bg-slate-50/90 xl:flex xl:flex-col">
@@ -114,19 +116,20 @@ export function SessionRail({
               </div>
             ) : (
               recentRuns.map((run) => (
-                <button
+                <div
                   key={run.id}
-                  type="button"
-                  onClick={() => onOpenRun(run)}
-                  className="w-full border border-slate-200 bg-white/90 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-moss/30 hover:bg-white"
+                  className="group w-full border border-slate-200 bg-white/90 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-moss/30 hover:bg-white"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-slate-900">{run.query}</div>
+                      <button type="button" onClick={() => onOpenRun(run)} className="block w-full truncate text-left text-sm font-medium text-slate-900">
+                        {run.query}
+                      </button>
                       <div className="mt-1 max-h-10 overflow-hidden text-xs leading-5 text-slate-500">
                         {run.summary}
                       </div>
                     </div>
+                    <div className="flex shrink-0 items-start gap-2">
                     <span
                       className={cn(
                         "mt-0.5 inline-flex shrink-0 items-center rounded-full px-2 py-1 text-[11px] font-semibold",
@@ -137,12 +140,16 @@ export function SessionRail({
                     >
                       {run.status === "done" ? "完成" : run.status === "running" ? "运行" : "异常"}
                     </span>
+                    <button type="button" disabled={run.status === "running"} onClick={() => onDeleteRun(run)} className="grid h-6 w-6 place-items-center text-slate-400 transition hover:text-tomato disabled:cursor-not-allowed disabled:opacity-20" title="删除记录" aria-label={`删除 ${run.query}`}>
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                    </div>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-400">
                     <span>{formatTime(run.createdAt)}</span>
                     <span>{run.rows ?? 0} 行</span>
                   </div>
-                </button>
+                </div>
               ))
             )}
           </div>

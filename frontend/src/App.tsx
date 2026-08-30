@@ -16,7 +16,7 @@ import { Composer } from "./components/Composer";
 import { EmptyState } from "./components/EmptyState";
 import { MessageBubble } from "./components/MessageBubble";
 import { SessionRail } from "./components/SessionRail";
-import { fetchQueryHistory, streamQuery } from "./lib/agentApi";
+import { deleteQueryHistory, fetchQueryHistory, streamQuery } from "./lib/agentApi";
 import { cn, countResultRows, summarizeResult } from "./lib/format";
 import type {
   AgentEvent,
@@ -341,9 +341,20 @@ export default function App() {
     ]);
   };
 
+  const deleteRun = async (run: RunSummary) => {
+    if (run.status === "running") return;
+    if (!window.confirm("删除这条查询记录？")) return;
+    try {
+      await deleteQueryHistory(run.id);
+      setRecentRuns((current) => current.filter((item) => item.id !== run.id));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "删除失败，请稍后重试。");
+    }
+  };
+
   return (
-    <div className="min-h-[100dvh] overflow-hidden bg-parchment text-ink">
-      <div className="relative grid min-h-[100dvh] min-w-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)_340px]">
+    <div className="h-[100dvh] overflow-hidden bg-parchment text-ink">
+      <div className="relative grid h-[100dvh] min-w-0 overflow-hidden xl:grid-cols-[280px_minmax(0,1fr)_340px]">
         <aside className="hidden min-h-0 border-r border-slate-200/90 bg-white/85 xl:flex xl:flex-col">
           <div className="border-b border-slate-200 px-5 py-5">
             <div className="flex items-center gap-3">
@@ -516,6 +527,7 @@ export default function App() {
           latestRun={activeRun}
           recentRuns={recentRuns}
           onOpenRun={openHistory}
+          onDeleteRun={deleteRun}
         />
       </div>
     </div>
