@@ -9,6 +9,7 @@ import jieba.analyse
 from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
+from app.agent.keyword_utils import dedupe_preserve_order
 from app.agent.state import DataAgentState
 from app.core.log import logger
 
@@ -43,8 +44,8 @@ async def extract_keywords(state: DataAgentState, runtime: Runtime[DataAgentCont
         keywords = jieba.analyse.extract_tags(query, allowPOS=allow_pos)
 
         # 保留原始问题作为兜底检索入口，避免关键词切分不准时丢掉完整语义
-        # set 用来去重；顺序不参与后续判断，所以这里不依赖关键词顺序
-        keywords = list(set(keywords + [query]))
+        # 保序去重，保证召回顺序和离线评测可复现
+        keywords = dedupe_preserve_order([*keywords, query])
 
         writer({"type": "progress", "step": step, "status": "success"})
         logger.info(f"抽取关键词成功: {keywords}")

@@ -77,3 +77,5 @@ class DataAgentState(TypedDict):
     sql: str  # 生成或校正后的SQL
 
     error: str  # 校验SQL时出现的错误信息
+    sql_retry_count: int  # 已执行的 SQL 修正次数
+    sql_attempts: list[dict[str, object]]  # 每次 SQL 校验的语句和错误

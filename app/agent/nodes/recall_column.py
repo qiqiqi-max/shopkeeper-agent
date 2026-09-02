@@ -11,6 +11,7 @@ from langchain_core.prompts import PromptTemplate
 from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
+from app.agent.keyword_utils import dedupe_preserve_order
 from app.agent.llm import llm
 from app.agent.state import DataAgentState
 from app.core.log import logger
@@ -45,8 +46,8 @@ async def recall_column(state: DataAgentState, runtime: Runtime[DataAgentContext
 
         result = await chain.ainvoke({"query": query})
 
-        # 原始关键词和 LLM 扩展词一起参与召回；set 去重，避免重复请求同一关键词
-        keywords = set(keywords + result)
+        # 原始关键词和 LLM 扩展词一起参与召回，保序去重以保证请求顺序稳定
+        keywords = dedupe_preserve_order([*keywords, *result])
 
         # 用字段 id 做唯一键，因为多个关键词、同一字段的多个向量点都可能命中同一个字段
         column_info_map: dict[str, ColumnInfo] = {}

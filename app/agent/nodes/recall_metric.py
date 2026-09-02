@@ -11,6 +11,7 @@ from langchain_core.prompts import PromptTemplate
 from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
+from app.agent.keyword_utils import dedupe_preserve_order
 from app.agent.llm import llm
 from app.agent.state import DataAgentState
 from app.core.log import logger
@@ -45,8 +46,8 @@ async def recall_metric(state: DataAgentState, runtime: Runtime[DataAgentContext
 
         result = await chain.ainvoke({"query": query})
 
-        # 通用关键词和指标扩展词都参与召回，提升同义指标的命中率
-        keywords = set(keywords + result)
+        # 通用关键词和指标扩展词都参与召回，并保持稳定顺序
+        keywords = dedupe_preserve_order([*keywords, *result])
 
         # 用指标 id 做唯一键，避免多个关键词命中同一个指标时重复写入 state
         metric_info_map: dict[str, MetricInfo] = {}

@@ -79,6 +79,7 @@ class QueryService:
             dw_mysql_repository=self.dw_mysql_repository,
         )
         has_result = False
+        has_error = False
         try:
             # stream_mode="custom" 对应节点内部 writer(...) 写出的进度消息
             async with asyncio.timeout(120):
@@ -91,11 +92,16 @@ class QueryService:
                         await self.query_history_repository.mark_done(
                             history_id, data, summary
                         )
+                    elif chunk.get("type") == "error":
+                        has_error = True
+                        await self.query_history_repository.mark_error(
+                            history_id, str(chunk.get("message", "查询失败"))
+                        )
 
                     # SSE 要求每条消息以 data: 开头，并以两个换行符结束
                     yield f"data: {json.dumps(chunk, ensure_ascii=False, default=str)}\n\n"
 
-            if not has_result:
+            if not has_result and not has_error:
                 message = "流程结束但未返回查询结果"
                 await self.query_history_repository.mark_error(history_id, message)
                 error = {"type": "error", "message": message}

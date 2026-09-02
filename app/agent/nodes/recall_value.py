@@ -11,6 +11,7 @@ from langchain_core.prompts import PromptTemplate
 from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
+from app.agent.keyword_utils import dedupe_preserve_order
 from app.agent.llm import llm
 from app.agent.state import DataAgentState
 from app.core.log import logger
@@ -45,8 +46,8 @@ async def recall_value(state: DataAgentState, runtime: Runtime[DataAgentContext]
 
         result = await chain.ainvoke({"query": query})
 
-        # 通用关键词和字段值扩展词一起检索 ES，尽量提高真实取值召回率
-        keywords = set(keywords + result)
+        # 通用关键词和字段值扩展词一起检索 ES，并保持稳定顺序
+        keywords = dedupe_preserve_order([*keywords, *result])
 
         # 用 ValueInfo.id 去重，避免多个关键词命中同一条字段值记录
         value_infos_map: dict[str, ValueInfo] = {}

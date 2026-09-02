@@ -7,6 +7,8 @@
 SQL 生成闭环中的数据库环境读取 SQL 校验和最终查询执行也集中放在这里
 """
 
+import re
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlglot import exp, parse
@@ -20,6 +22,22 @@ class DWMySQLRepository:
         self.session = session
 
     @staticmethod
+    def _quote_identifier(identifier: str) -> str:
+        """校验并引用 MySQL 标识符，避免动态表名和字段名注入。"""
+        if not isinstance(identifier, str) or not re.fullmatch(
+            r"[A-Za-z_][A-Za-z0-9_]*", identifier
+        ):
+            raise ValueError(f"非法数据库标识符：{identifier}")
+        return f"`{identifier}`"
+
+    @staticmethod
+    def _validate_limit(limit: int) -> int:
+        """限制元数据抽样规模，避免异常参数造成无界查询。"""
+        if not isinstance(limit, int) or not 1 <= limit <= 100_000:
+            raise ValueError("limit 必须是 1 到 100000 之间的整数")
+        return limit
+
+    @staticmethod
     def _ensure_read_only(sql: str) -> str:
         """只允许单条 SELECT，避免模型输出修改数据的语句。"""
         normalized = sql.strip()
@@ -29,13 +47,16 @@ class DWMySQLRepository:
             statements = parse(normalized, read="mysql")
         except ParseError as exc:
             raise ValueError("SQL 解析失败") from exc
-        if len(statements) != 1 or not isinstance(statements[0], exp.Select):
+        statement = statements[0] if len(statements) == 1 else None
+        if not isinstance(statement, exp.Select):
             raise ValueError("只允许执行单条只读 SELECT 查询")
-        return statements[0].sql(dialect="mysql")
+        if statement.args.get("locks") or statement.find(exp.Into):
+            raise ValueError("不允许使用锁定或导出数据的 SELECT 语法")
+        return statement.sql(dialect="mysql")
 
     async def get_column_types(self, table_name: str) -> dict[str, str]:
         """查询整张表的字段类型，作为 ColumnInfo.type 的真实来源"""
-        sql = f"show columns from {table_name}"
+        sql = f"show columns from {self._quote_identifier(table_name)}"
         result = await self.session.execute(text(sql))
         result_dict = result.mappings().fetchall()
         return {row["Field"]: row["Type"] for row in result_dict}
@@ -44,7 +65,10 @@ class DWMySQLRepository:
         self, table_name: str, column_name: str, limit: int = 10
     ) -> list:
         """抽样查询字段示例值，供元数据入库和后续检索链路复用"""
-        sql = f"select distinct {column_name} from {table_name} limit {limit}"
+        table = self._quote_identifier(table_name)
+        column = self._quote_identifier(column_name)
+        safe_limit = self._validate_limit(limit)
+        sql = f"select distinct {column} from {table} limit {safe_limit}"
         result = await self.session.execute(text(sql))
         return [row[0] for row in result.fetchall()]
 
